@@ -60,12 +60,22 @@ window.XcalateAPI = {
   // Auth
   register: (body) => apiPost("/auth/register/", body),
   login: (username, password) => apiPost("/auth/login/", { username, password }),
+  refresh: (refresh) => apiPost("/auth/refresh/", { refresh }),
   me: (token) => fetch(API_BASE + "/auth/me/", {
     headers: { Authorization: `Bearer ${token}` },
   }).then(r => r.json()),
 
   // AI
   askCompanion: (body) => apiPost("/companion/ask/", body),
+  voiceTranslate: (formData) => fetch(API_BASE + "/voice/translate/", {
+    method: "POST",
+    body: formData,
+    credentials: "include",
+  }).then(async (r) => {
+    const data = await r.json().catch(() => ({}));
+    if (!r.ok) throw new Error(data.message || data.detail || `API ${r.status}`);
+    return data;
+  }),
   translate: (body) => apiPost("/text/translate/", body),
   tts: (body) => apiPost("/text/tts/", body),
 };
@@ -86,12 +96,18 @@ window.playBase64Audio = function (base64, format = "mp3") {
 
 // Auth token helpers
 window.xcalateAuth = {
-  getToken: () => localStorage.getItem("xcalate_access"),
+  getToken: () => localStorage.getItem("access_token") || localStorage.getItem("xcalate_access"),
   setTokens: (access, refresh) => {
+    localStorage.setItem("access_token", access);
     localStorage.setItem("xcalate_access", access);
-    if (refresh) localStorage.setItem("xcalate_refresh", refresh);
+    if (refresh) {
+      localStorage.setItem("refresh_token", refresh);
+      localStorage.setItem("xcalate_refresh", refresh);
+    }
   },
   clear: () => {
+    localStorage.removeItem("access_token");
+    localStorage.removeItem("refresh_token");
     localStorage.removeItem("xcalate_access");
     localStorage.removeItem("xcalate_refresh");
   },
