@@ -4,6 +4,7 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Manipur — Cultural Guide</title>
+    <link rel="icon" href="data:,">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@500;600;700&family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet">
@@ -46,6 +47,7 @@
                       stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
               </svg>
             </button>
+            <span class="badge-pill" id="loginBadge" hidden></span>
           </div>
 
           <div class="hero-panel reveal" data-reveal>
@@ -384,6 +386,15 @@
           <div class="map-results" id="mapResults"></div>
         </section>
 
+        <section class="detail-view" id="detailView" aria-hidden="true">
+          <div class="category-topbar">
+            <button class="category-back" id="detailBack">← <span>Back</span></button>
+            <span class="category-mark">DETAIL</span>
+          </div>
+          <div class="detail-hero" id="detailHero"></div>
+          <div class="detail-content" id="detailContent"></div>
+        </section>
+
         <div id="mtcTip">Local guide</div>
         <button id="mtcFab" class="mtc-press" aria-label="Open companion">
           <svg width="26" height="26" viewBox="0 0 24 24" fill="none"><path fill-rule="evenodd" clip-rule="evenodd" d="M18 4.09961C20.1539 4.09961 21.9004 5.84609 21.9004 8V16C21.9004 18.1539 20.1539 19.9004 18 19.9004H6C3.84609 19.9004 2.09961 18.1539 2.09961 16V8C2.09961 5.84609 3.84609 4.09961 6 4.09961H18ZM3.90039 16C3.90039 17.1598 4.8402 18.0996 6 18.0996H18C19.1598 18.0996 20.0996 17.1598 20.0996 16V9.49805L13.5361 13.5361C12.5955 14.1147 11.4075 14.1084 10.4727 13.5205L3.90039 9.38672V16ZM6 5.90039C5.0746 5.90039 4.29039 6.49909 4.01074 7.33008L11.4316 11.9971C11.7861 12.2199 12.2361 12.2222 12.5928 12.0029L20.0195 7.43457C19.7725 6.54993 18.9636 5.90039 18 5.90039H6Z" fill="currentColor"></path></svg>
@@ -409,6 +420,9 @@
               <button class="chat-prompt" data-prompt="How many days are you staying in Manipur?">How many days?</button>
             </div>
           </div>
+          <button id="mtcHoldSpeak" class="mtc-iconbtn" style="width:100%;margin:0 16px 10px;height:38px;justify-content:center;display:flex;gap:6px;align-items:center;font-size:12px">
+            🎤 Hold to speak
+          </button>
           <div class="chat-input-row">
             <input id="mtcAsk" type="text" placeholder="Ask anything, in any language..." />
             <button class="mtc-iconbtn send-btn" id="mtcSend" aria-label="Send"><svg width="16" height="16" viewBox="0 0 24 24" fill="none"><path d="M4 12l16-7-5 16-3.5-6.5L4 12z" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"></path></svg></button>
@@ -424,6 +438,21 @@
         </div>
 
         <div class="mtc-toast" id="mtcToast"></div>
+
+        <div class="xcalate-modal" id="loginModal" aria-hidden="true">
+          <div class="xcalate-modal-backdrop"></div>
+          <div class="xcalate-modal-card">
+            <h2 class="xcalate-modal-title">Sign in</h2>
+            <p class="xcalate-modal-sub">Demo: ramesh / Test@1234 (seller) · adish / Test@1234 (tourist)</p>
+            <input id="loginUsername" type="text" placeholder="Username" autocomplete="username" />
+            <input id="loginPassword" type="password" placeholder="Password" autocomplete="current-password" />
+            <div class="xcalate-modal-error" id="loginError" hidden></div>
+            <div class="xcalate-modal-actions">
+              <button class="xcalate-btn-ghost" id="loginCancel">Cancel</button>
+              <button class="xcalate-btn-primary" id="loginSubmit">Sign in</button>
+            </div>
+          </div>
+        </div>
       </div>
     </div>
 
@@ -561,8 +590,8 @@
           });
 
         function renderTravelCards(target, items) {
-          $(target).innerHTML = items.map(function (item) {
-            return '<div class="mtc-card travel-card">'
+          $(target).innerHTML = items.length ? items.map(function (item) {
+            return '<div class="mtc-card travel-card" data-slug="' + item.slug + '" data-type="place">'
               + '<img src="' + item.image + '" alt="' + item.name + '" />'
               + '<div class="travel-card-body">'
               + '<div class="travel-card-title">' + item.name + '</div>'
@@ -570,10 +599,15 @@
               + '<div class="travel-card-desc">' + item.desc + '</div>'
               + '<button class="mtc-tab mtc-press" data-category="' + item.category + '">Explore</button>'
               + '</div></div>';
-          }).join('');
+          }).join('') : '<div class="mtc-card travel-card" style="padding:24px;text-align:center;opacity:.55;display:grid;place-items:center;min-height:132px">No items yet.</div>';
+        }
+
+        function renderTravelState(target, message) {
+          $(target).innerHTML = '<div class="mtc-card travel-card" style="padding:24px;text-align:center;opacity:.55;display:grid;place-items:center;min-height:132px">' + message + '</div>';
         }
 
         // Nature carousel
+        renderTravelState('#mtcNature', 'Loading…');
         XcalateAPI.places({ category: "nature", limit: 6 })
           .then(function (res) {
             renderTravelCards('#mtcNature', (res.results || []).map(function (p) {
@@ -587,9 +621,10 @@
               };
             }));
           })
-          .catch(function (e) { console.error('nature:', e); });
+          .catch(function (e) { console.error('nature:', e); renderTravelState('#mtcNature', 'Could not load.'); });
 
         // Iconic = market + temple
+        renderTravelState('#mtcIconic', 'Loading…');
         Promise.all([
           XcalateAPI.places({ category: "market", limit: 3 }),
           XcalateAPI.places({ category: "temple", limit: 3 }),
@@ -605,9 +640,10 @@
               slug: p.slug
             };
           }));
-        }).catch(function (e) { console.error('iconic:', e); });
+        }).catch(function (e) { console.error('iconic:', e); renderTravelState('#mtcIconic', 'Could not load.'); });
 
         // Cuisine = restaurants
+        renderTravelState('#mtcCuisine', 'Loading…');
         XcalateAPI.places({ category: "restaurant", limit: 6 })
           .then(function (res) {
             renderTravelCards('#mtcCuisine', (res.results || []).map(function (p) {
@@ -621,9 +657,10 @@
               };
             }));
           })
-          .catch(function (e) { console.error('cuisine:', e); });
+          .catch(function (e) { console.error('cuisine:', e); renderTravelState('#mtcCuisine', 'Could not load.'); });
 
         // Crafts = marketplace products
+        renderTravelState('#mtcCrafts', 'Loading…');
         XcalateAPI.listings({ type: "product", limit: 6 })
           .then(function (res) {
             renderTravelCards('#mtcCrafts', (res.results || []).map(function (l) {
@@ -637,10 +674,14 @@
               };
             }));
           })
-          .catch(function (e) { console.error('crafts:', e); });
+          .catch(function (e) { console.error('crafts:', e); renderTravelState('#mtcCrafts', 'Could not load.'); });
 
-        $$('.travel-card [data-category]').forEach(function (button) {
-          button.addEventListener('click', function () { openCategory(button.dataset.category); });
+        document.addEventListener('click', function (e) {
+          var exploreBtn = e.target.closest('.travel-card [data-category]');
+          if (exploreBtn) {
+            e.preventDefault();
+            openCategory(exploreBtn.dataset.category);
+          }
         });
 
         var toastT;
@@ -682,6 +723,9 @@
         var categoryTitle = $('#categoryTitle');
         var categoryIntro = $('#categoryIntro');
         var categoryGrid = $('#categoryGrid');
+        var detailView = $('#detailView');
+        var detailHero = $('#detailHero');
+        var detailContent = $('#detailContent');
         var categoryData = {
           monuments: { kicker: 'Places with presence', title: 'Monuments', intro: 'Buildings, gateways, and landmarks that hold the memory of Manipur.', image: 'WhatsApp Image 2026-09-21 at 17.15.49.jpeg', items: ['Kangla Fort', 'Shree Govindajee Temple', 'Guardian Gate'] },
           nature: { kicker: 'Open air, slow pace', title: 'Natural sights', intro: 'Mountain air, open horizons, and landscapes shaped by the seasons.', image: 'shirui lily.jpg', items: ['Shirui Peak', 'Loktak Lake', 'Dzuko Valley'] },
@@ -723,14 +767,63 @@
           categoryIntro.textContent = data.intro;
           categoryHero.style.backgroundImage = "linear-gradient(180deg, rgba(25, 14, 11, 0.02), rgba(25, 14, 11, 0.62)), url('" + data.image + "')";
           categoryView.dataset.layout = key;
-          categoryGrid.innerHTML = data.items.map(function (item, index) {
-            var detail = key === 'cuisine' ? ['Local flavors', 'Best enjoyed slowly', 'Try something new'][index]
-              : key === 'practical' ? ['Seasonal notes', 'Simple transport tips', 'Light packing guide'][index]
-              : key === 'nature' ? ['Mountain landscape', 'Water and sunrise', 'Forest route'][index]
-              : key === 'crafts' ? ['Made by local hands', 'Traditional textile', 'Take a piece home'][index]
-              : 'Explore details';
-            return '<button class="category-card mtc-press"><span>0' + (index + 1) + '</span><strong>' + item + '</strong><em>' + detail + '</em></button>';
-          }).join('');
+          var apiPromise = null;
+          var apiType = 'place';
+          if (key === 'monuments') apiPromise = XcalateAPI.places({ category: 'monument', limit: 10 });
+          if (key === 'nature') apiPromise = XcalateAPI.places({ category: 'nature', limit: 10 });
+          if (key === 'iconic') {
+            apiPromise = Promise.all([
+              XcalateAPI.places({ category: 'market', limit: 5 }),
+              XcalateAPI.places({ category: 'temple', limit: 5 })
+            ]).then(function (responses) {
+              return { results: (responses[0].results || []).concat(responses[1].results || []) };
+            });
+          }
+          if (key === 'cuisine') apiPromise = XcalateAPI.places({ category: 'restaurant', limit: 10 });
+          if (key === 'crafts') {
+            apiType = 'listing';
+            apiPromise = XcalateAPI.listings({ type: 'product', limit: 10 });
+          }
+          if (key === 'trails') {
+            apiPromise = XcalateAPI.places({ category: 'adventure', limit: 10 }).then(function (response) {
+              return (response.results || []).length ? response : XcalateAPI.places({ category: 'nature', limit: 10 });
+            });
+          }
+          if (key === 'homestays') {
+            apiType = 'homestay';
+            apiPromise = XcalateAPI.homestays({ limit: 10 });
+          }
+          if (apiPromise) {
+            categoryGrid.innerHTML = '<div class="category-card" style="grid-template-columns:1fr;padding:24px;text-align:center;opacity:.6">Loading…</div>';
+            apiPromise.then(function (response) {
+              var items = response.results || [];
+              if (response.count === 0 || !items.length) {
+                categoryGrid.innerHTML = '<div class="category-card" style="grid-template-columns:1fr;padding:24px;text-align:center;opacity:.6">No items yet.</div>';
+                return;
+              }
+              categoryGrid.innerHTML = items.map(function (item, index) {
+                var name = apiType === 'listing' ? item.title : apiType === 'homestay' ? item.title : item.name;
+                var description = item.short_description || '';
+                if (apiType === 'listing') {
+                  description = '₹' + Number(item.price).toLocaleString('en-IN') + ' · ' + (item.unit || 'textile');
+                } else if (apiType === 'homestay') {
+                  description = '₹' + Number(item.price_per_night).toLocaleString('en-IN') + '/night';
+                }
+                return '<button class="category-card mtc-press" data-slug="' + item.slug + '" data-type="' + apiType + '"><span>'
+                  + String(index + 1).padStart(2, '0') + '</span><strong>' + name + '</strong><em>' + description + '</em></button>';
+              }).join('');
+            }).catch(function () {
+              categoryGrid.innerHTML = '<div class="category-card" style="grid-template-columns:1fr;padding:24px;text-align:center;opacity:.6">Could not load. Check server.</div>';
+            });
+          } else {
+            categoryGrid.innerHTML = data.items.map(function (item, index) {
+              var detail = key === 'practical' ? ['Seasonal notes', 'Simple transport tips', 'Light packing guide'][index]
+                : key === 'nature' ? ['Mountain landscape', 'Water and sunrise', 'Forest route'][index]
+                : key === 'crafts' ? ['Made by local hands', 'Traditional textile', 'Take a piece home'][index]
+                : 'Explore details';
+              return '<button class="category-card mtc-press"><span>0' + (index + 1) + '</span><strong>' + item + '</strong><em>' + detail + '</em></button>';
+            }).join('');
+          }
           if (key === 'practical') {
             categoryKicker.textContent = 'Your local starting point';
             categoryTitle.innerHTML = '<span>Practical</span> <span>information</span>';
@@ -815,10 +908,6 @@
           mapView.addEventListener('pointerleave', function () { resetTitleWords(mapView); });
         }
 
-        $$('.qa').forEach(function (c) {
-          c.addEventListener('click', function () { openCategory(c.dataset.category); });
-        });
-
         $$('.highlight-card, .featured-photo').forEach(function (card) {
           card.addEventListener('click', function () { openCategory(card.dataset.category); });
         });
@@ -843,27 +932,10 @@
           button.addEventListener('click', function () { openCategory(button.dataset.category); });
         });
 
-        if (window.matchMedia('(pointer: fine) and (prefers-reduced-motion: no-preference)').matches) {
-          $$('.qa').forEach(function (card) {
-            card.addEventListener('pointermove', function (event) {
-              var bounds = card.getBoundingClientRect();
-              var x = (event.clientX - bounds.left) / bounds.width - 0.5;
-              var y = (event.clientY - bounds.top) / bounds.height - 0.5;
-              card.style.setProperty('--tilt-x', (y * -3).toFixed(2) + 'deg');
-              card.style.setProperty('--tilt-y', (x * 3).toFixed(2) + 'deg');
-              card.style.setProperty('--lift', '-4px');
-            });
-            card.addEventListener('pointerleave', function () {
-              card.style.setProperty('--tilt-x', '0deg');
-              card.style.setProperty('--tilt-y', '0deg');
-              card.style.setProperty('--lift', '0px');
-            });
-          });
-        }
-
         $('#categoryBack').addEventListener('click', function () {
           categoryView.classList.remove('open');
           categoryView.setAttribute('aria-hidden', 'true');
+          categoryView.blur();
         });
 
         var transportView = $('#transportView');
@@ -898,7 +970,6 @@
           });
         });
 
-        var mapView = $('#mapView');
         var mapMarkers = $('#mapMarkers');
         var mapResults = $('#mapResults');
         var mapResultCount = $('#mapResultCount');
@@ -927,6 +998,17 @@
 
         var selectedMapFilter = 'all';
         renderMap('', selectedMapFilter);
+        document.addEventListener('click', function (e) {
+          var el = e.target.closest('[data-place]');
+          if (!el) return;
+          var name = el.dataset.place;
+          var item = mapData.find(function (m) { return m.name === name; });
+          if (!item) return;
+          XcalateAPI.places({ search: item.name, limit: 1 }).then(function (res) {
+            var first = (res.results || [])[0];
+            if (first) openDetail('place', first.slug);
+          }).catch(function () { toast('Could not open place'); });
+        });
         $('#mapFilters').addEventListener('click', function (event) {
           var filterButton = event.target.closest('.map-filter');
           if (!filterButton) return;
@@ -950,27 +1032,48 @@
         });
         $('#mapLocate').addEventListener('click', function () { toast('Map centered on Manipur'); });
 
+        var searchBox = $('#mtcSearch').closest('.search-box');
+        var searchDropdown = document.createElement('div');
+        searchDropdown.className = 'xcalate-search-dropdown';
+        searchDropdown.hidden = true;
+        searchBox.appendChild(searchDropdown);
+
+        function closeSearchDropdown() {
+          searchDropdown.hidden = true;
+          searchDropdown.innerHTML = '';
+        }
+
+        searchDropdown.addEventListener('click', function (e) {
+          var row = e.target.closest('.xcalate-search-row[data-slug]');
+          if (!row) return;
+          closeSearchDropdown();
+          openDetail('place', row.dataset.slug);
+        });
+
         $('#mtcSearch').addEventListener('keydown', function (e) {
+          if (e.key === 'Escape') {
+            closeSearchDropdown();
+            return;
+          }
           if (e.key !== 'Enter') return;
+          e.preventDefault();
           var q = e.target.value.trim();
           if (!q) return;
-          XcalateAPI.places({ search: q, limit: 1 })
+          searchDropdown.hidden = false;
+          searchDropdown.innerHTML = '<div class="xcalate-search-row">Searching…</div>';
+          XcalateAPI.places({ search: q, limit: 5 })
             .then(function (res) {
               var items = res.results || [];
-              if (!items.length) { toast('No matches for "' + q + '"'); return; }
-              var place = items[0];
-              var key = place.category === 'nature'     ? 'nature'
-                      : place.category === 'market'     ? 'iconic'
-                      : place.category === 'temple'     ? 'monuments'
-                      : place.category === 'restaurant' ? 'cuisine'
-                      : 'monuments';
-              openCategory(key);
-              setTimeout(function () {
-                categoryTitle.innerHTML = '<span>' + place.name + '</span>';
-                categoryIntro.textContent = place.short_description || '';
-              }, 150);
+              searchDropdown.innerHTML = items.length ? items.map(function (place) {
+                return '<button type="button" class="xcalate-search-row" data-slug="' + escapeDetail(place.slug) + '"><strong>'
+                  + escapeDetail(place.name) + '</strong><small>' + escapeDetail(place.region || place.category || 'Manipur') + '</small></button>';
+              }).join('') : '<div class="xcalate-search-row">No matches found.</div>';
             })
-            .catch(function (err) { toast('Search failed'); console.error(err); });
+            .catch(function () { searchDropdown.innerHTML = '<div class="xcalate-search-row">Could not search right now.</div>'; });
+        });
+
+        document.addEventListener('click', function (e) {
+          if (!searchBox.contains(e.target)) closeSearchDropdown();
         });
 
         $('#mtcMic').addEventListener('click', function () {
@@ -979,31 +1082,96 @@
           var rec = new SR();
           rec.lang = 'en-IN';
           rec.interimResults = false;
+          rec.continuous = false;
           toast('Listening…');
           rec.onresult = function (e) {
             var q = e.results[0][0].transcript;
-            $('#mtcAsk').value = q;
             sheet.classList.add('open');
-            send();
+            $('#mtcAsk').value = q;
+            setTimeout(send, 200);
           };
-          rec.onerror = function () { toast('Could not hear that. Try again.'); };
+          rec.onerror = function (ev) {
+            if (ev.error === 'not-allowed') toast('Mic permission denied');
+            else toast('Could not hear that. Try again.');
+          };
           rec.start();
         });
+        document.getElementById('mtcHoldSpeak').addEventListener('click', function () { $('#mtcMic').click(); });
         $('#mtcLang').addEventListener('change', function (e) { toast('Content language switched to ' + e.target.value); });
-        $('#mtcFx').addEventListener('click', function () { toast('₹1 = $0.012 · works fully offline'); });
+
+        var loginModal = $('#loginModal');
+        var loginUsername = $('#loginUsername');
+        var loginPassword = $('#loginPassword');
+        var loginError = $('#loginError');
+        var loginBadge = $('#loginBadge');
+        var loginButton = $('#xcalateLoginBtn');
+
+        function closeLoginModal() {
+          loginModal.classList.remove('open');
+          loginModal.setAttribute('aria-hidden', 'true');
+          loginError.hidden = true;
+          loginError.textContent = '';
+          loginPassword.value = '';
+        }
+
+        function showLoginBadge(username) {
+          loginBadge.textContent = username;
+          loginBadge.hidden = !username;
+          loginButton.setAttribute('aria-label', username ? 'Sign out' : 'Login');
+        }
+
+        function loadSignedInUser() {
+          if (!window.xcalateAuth.getToken()) return;
+          XcalateAPI.me(window.xcalateAuth.getToken())
+            .then(function (data) {
+              var user = data.user || data;
+              showLoginBadge(user.username || user.name || 'Signed in');
+            })
+            .catch(function () { showLoginBadge(''); });
+        }
 
         $('#xcalateLoginBtn').addEventListener('click', function () {
-          var u = prompt("Username (try: ramesh)", "ramesh");
-          if (!u) return;
-          var p = prompt("Password (try: Test@1234)", "Test@1234");
-          if (!p) return;
-          XcalateAPI.login(u, p)
+          if (window.xcalateAuth.getToken()) {
+            window.xcalateAuth.clear();
+            showLoginBadge('');
+            toast('Signed out');
+            return;
+          }
+          loginModal.classList.add('open');
+          loginModal.setAttribute('aria-hidden', 'false');
+          loginUsername.focus();
+        });
+
+        $('#loginCancel').addEventListener('click', closeLoginModal);
+        $('.xcalate-modal-backdrop').addEventListener('click', closeLoginModal);
+        loginPassword.addEventListener('keydown', function (event) {
+          if (event.key === 'Enter') $('#loginSubmit').click();
+        });
+        $('#loginSubmit').addEventListener('click', function () {
+          var username = loginUsername.value.trim();
+          var password = loginPassword.value;
+          loginError.hidden = true;
+          if (!username || !password) {
+            loginError.textContent = 'Enter a username and password.';
+            loginError.hidden = false;
+            return;
+          }
+          var submit = $('#loginSubmit');
+          submit.disabled = true;
+          XcalateAPI.login(username, password)
             .then(function (data) {
               window.xcalateAuth.setTokens(data.access, data.refresh);
-              toast('Logged in as ' + u);
+              showLoginBadge(username);
+              closeLoginModal();
+              toast('Welcome, ' + username);
             })
-            .catch(function (err) { toast('Login failed: ' + err.message); });
+            .catch(function (err) {
+              loginError.textContent = err.message || 'Login failed.';
+              loginError.hidden = false;
+            })
+            .finally(function () { submit.disabled = false; });
         });
+        loadSignedInUser();
 
         document.addEventListener('click', function (e) {
           var b = e.target.closest('.book-btn');
@@ -1066,6 +1234,83 @@
         });
 
         var sheet = $('#mtcSheet'), fab = $('#mtcFab'), tip = $('#mtcTip');
+
+        function escapeDetail(value) {
+          return String(value == null ? '' : value).replace(/[&<>"']/g, function (character) {
+            return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[character];
+          });
+        }
+
+        function closeDetail() {
+          detailView.classList.remove('open');
+          detailView.setAttribute('aria-hidden', 'true');
+        }
+
+        async function openDetail(type, slug) {
+          if (!slug) return;
+          detailView.classList.add('open');
+          detailView.setAttribute('aria-hidden', 'false');
+          detailView.scrollTop = 0;
+          detailHero.style.backgroundImage = '';
+          detailContent.innerHTML = '<p class="detail-desc">Loading details…</p>';
+
+          try {
+            var detail = type === 'homestay' ? await XcalateAPI.homestayDetail(slug)
+              : type === 'listing' ? await XcalateAPI.listingDetail(slug)
+              : await XcalateAPI.placeDetail(slug);
+            var name = detail.name || detail.title || 'Travel detail';
+            var imageValue = detail.image || detail.cover_image || (detail.images && detail.images[0]);
+            var image = typeof imageValue === 'string' ? imageValue : imageValue && (imageValue.url || imageValue.image);
+            var category = type === 'homestay' ? 'Homestay' : type === 'listing' ? (detail.category || 'Product') : (detail.category || 'Place');
+            var region = detail.region || detail.address || detail.location || 'Manipur';
+            var description = detail.short_description || detail.description || detail.details || 'A place worth taking slowly.';
+            var rating = detail.rating == null ? '' : '<div class="detail-rating"><span class="mtc-stars">' + stars(detail.rating) + '</span><span>' + Number(detail.rating).toFixed(1) + '</span></div>';
+            var info = [];
+            if (detail.address) info.push('<strong>Address</strong><span>' + escapeDetail(detail.address) + '</span>');
+            if (type === 'homestay' && detail.price_per_night != null) info.push('<strong>Price</strong><span>₹' + Number(detail.price_per_night).toLocaleString('en-IN') + ' / night</span>');
+            if (type === 'listing' && detail.price != null) info.push('<strong>Price</strong><span>₹' + Number(detail.price).toLocaleString('en-IN') + ' · ' + escapeDetail(detail.unit || 'textile') + '</span>');
+            if (type === 'place' && detail.price_range) info.push('<strong>Price range</strong><span>' + escapeDetail(detail.price_range) + '</span>');
+            detailHero.style.backgroundImage = image ? "linear-gradient(180deg, rgba(25, 14, 11, 0.02), rgba(25, 14, 11, 0.42)), url('" + image + "')" : '';
+            detailContent.innerHTML = '<div class="detail-meta">' + escapeDetail(category) + '</div>'
+              + '<h1>' + escapeDetail(name) + '</h1>'
+              + '<div class="detail-region">' + escapeDetail(region) + '</div>'
+              + rating
+              + '<p class="detail-desc">' + escapeDetail(description) + '</p>'
+              + (info.length ? '<div class="detail-info">' + info.join('') + '</div>' : '')
+              + '<div class="detail-actions">'
+              + (type === 'homestay' ? '<button class="book-btn" data-slug="' + escapeDetail(slug) + '" data-name="' + escapeDetail(name) + '">Book</button>' : '')
+              + (type === 'listing' ? '<button id="detailContactSeller">Contact seller</button>' : '')
+              + '<button class="secondary" id="detailAskGuide">Ask guide about this</button>'
+              + '</div>';
+
+            $('#detailAskGuide').addEventListener('click', function () {
+              $('#mtcAsk').value = 'Tell me about ' + name;
+              sheet.classList.add('open');
+              $('#mtcAsk').focus();
+            });
+            if (type === 'listing') {
+              $('#detailContactSeller').addEventListener('click', function (event) {
+                var button = event.currentTarget;
+                button.disabled = true;
+                XcalateAPI.contactSeller(slug, { message: 'I am interested in ' + name + '.' }, window.xcalateAuth.getToken())
+                  .then(function () { button.textContent = 'Message sent'; toast('Message sent to the seller'); })
+                  .catch(function (error) { button.disabled = false; toast('Contact failed: ' + error.message); });
+              });
+            }
+          } catch (error) {
+            detailContent.innerHTML = '<p class="detail-desc">Could not load. Check server.</p>';
+            console.error(error);
+          }
+        }
+
+        $('#detailBack').addEventListener('click', closeDetail);
+        document.addEventListener('click', function (event) {
+          var card = event.target.closest('.category-card[data-slug], .stay-card[data-slug], .place-card[data-slug], .travel-card[data-slug]');
+          if (!card || event.target.closest('.book-btn') || event.target.closest('.travel-card [data-category]')) return;
+          var type = card.dataset.type || (card.classList.contains('stay-card') ? 'homestay' : 'place');
+          openDetail(type, card.dataset.slug);
+        });
+
         setTimeout(function () {
           tip.style.opacity = '1';
           tip.style.transform = 'translateX(0)';
