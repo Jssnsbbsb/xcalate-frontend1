@@ -639,10 +639,6 @@
           })
           .catch(function (e) { console.error('crafts:', e); });
 
-        $$('.travel-card [data-category]').forEach(function (button) {
-          button.addEventListener('click', function () { openCategory(button.dataset.category); });
-        });
-
         var toastT;
         function toast(msg) {
           var t = $('#mtcToast');
@@ -1026,6 +1022,27 @@
             }, token)
               .then(function () { toast('Booking request sent to ' + b.dataset.name); })
               .catch(function (err) { toast('Booking failed: ' + err.message); });
+          }
+
+          var travelButton = e.target.closest('.travel-card [data-category]');
+          if (travelButton) openCategory(travelButton.dataset.category);
+
+          var reviewButton = e.target.closest('#mtcTop [data-slug]');
+          if (reviewButton) {
+            XcalateAPI.placeDetail(reviewButton.dataset.slug)
+              .then(function (place) {
+                var key = place.category === 'nature' ? 'nature'
+                        : place.category === 'market' ? 'iconic'
+                        : place.category === 'temple' ? 'monuments'
+                        : 'monuments';
+                openCategory(key);
+                categoryTitle.innerHTML = '<span>' + place.name + '</span>';
+                categoryIntro.textContent = place.description || place.short_description || '';
+              })
+              .catch(function (err) {
+                toast('Could not load place details');
+                console.error(err);
+              });
           }
 
           if (e.target.closest('#practicalGuide')) {
