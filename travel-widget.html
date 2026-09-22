@@ -986,7 +986,8 @@
           rec.start();
         });
         $('#mtcLang').addEventListener('change', function (e) { toast('Content language switched to ' + e.target.value); });
-        $('#mtcFx').addEventListener('click', function () { toast('₹1 = $0.012 · works fully offline'); });
+        var fxButton = $('#mtcFx');
+        if (fxButton) fxButton.addEventListener('click', function () { toast('₹1 = $0.012 · works fully offline'); });
 
         $('#xcalateLoginBtn').addEventListener('click', function () {
           var u = prompt("Username (try: ramesh)", "ramesh");
