@@ -759,6 +759,59 @@
           + '<article class="bus-stop"><span>06</span><div><strong>Airport road / Imphal Airport</strong><small>Confirm the last city connection and keep a cab backup for late arrivals</small></div><b>◎</b></article>'
           + '</div><div class="transport-note"><strong>Bus-stop tip</strong><span>Ask “which bus goes toward...” and show the place name on your phone to avoid confusion.</span><button class="mtc-tab" id="practicalGuideTransport">Ask the guide</button></div>';
 
+        function categoryApiRequest(key) {
+          if (key === 'monuments') return Promise.all([
+            XcalateAPI.places({ category: 'monument', limit: 20 }),
+            XcalateAPI.places({ category: 'heritage', limit: 20 })
+          ]).then(function (results) {
+            return { type: 'place', items: (results[0].results || []).concat(results[1].results || []) };
+          });
+          if (key === 'nature') return XcalateAPI.places({ category: 'nature', limit: 20 }).then(function (res) {
+            return { type: 'place', items: res.results || [] };
+          });
+          if (key === 'trails') return Promise.all([
+            XcalateAPI.places({ category: 'nature', limit: 10 }),
+            XcalateAPI.places({ category: 'adventure', limit: 10 })
+          ]).then(function (results) {
+            return { type: 'place', items: (results[0].results || []).concat(results[1].results || []) };
+          });
+          if (key === 'iconic') return Promise.all([
+            XcalateAPI.places({ category: 'market', limit: 10 }),
+            XcalateAPI.places({ category: 'temple', limit: 10 })
+          ]).then(function (results) {
+            return { type: 'place', items: (results[0].results || []).concat(results[1].results || []) };
+          });
+          if (key === 'cuisine') return XcalateAPI.places({ category: 'restaurant', limit: 20 }).then(function (res) {
+            return { type: 'place', items: res.results || [] };
+          });
+          if (key === 'homestays') return XcalateAPI.homestays({ limit: 20 }).then(function (res) {
+            return { type: 'homestay', items: res.results || [] };
+          });
+          if (key === 'crafts') return XcalateAPI.listings({ type: 'product', limit: 20 }).then(function (res) {
+            return { type: 'listing', items: res.results || [] };
+          });
+          return Promise.resolve(null);
+        }
+
+        function renderApiCategoryCards(key, result) {
+          var items = result.items || [];
+          categoryGrid.innerHTML = items.length
+            ? items.map(function (item, index) {
+                var title = item.name || item.title;
+                var detail = result.type === 'homestay'
+                  ? '₹' + Number(item.price_per_night).toLocaleString('en-IN') + ' / night'
+                  : result.type === 'listing'
+                    ? '₹' + Number(item.price).toLocaleString('en-IN') + ' · ' + (item.price_unit || 'per item')
+                    : (item.short_description || item.region || 'Explore details');
+                var meta = result.type === 'homestay' ? (item.region || 'Manipur') : (item.region || item.category || 'Manipur');
+                return '<button class="category-card mtc-press" data-slug="' + item.slug
+                  + '" data-category="' + key + '" data-detail-type="' + result.type + '">'
+                  + '<span>0' + (index + 1) + '</span><strong>' + title + '</strong>'
+                  + '<em>' + meta + ' · ' + detail + '</em></button>';
+              }).join('')
+            : '<div class="map-empty">No matching items found yet.</div>';
+        }
+
         function openCategory(key) {
           var data = categoryData[key];
           if (!data) return;
@@ -974,13 +1027,31 @@
         var mapResults = $('#mapResults');
         var mapResultCount = $('#mapResultCount');
         var mapSearch = $('#mapSearch');
-        var mapData = [
-          { name: 'Loktak Lake', type: 'nature', label: 'Nature', place: 'Moirang · 48 km from Imphal', note: 'Floating phumdi islands and sunrise boat rides.', x: 28, y: 62 },
-          { name: 'Kangla Fort', type: 'monument', label: 'Monument', place: 'Imphal · city centre', note: 'The historic seat of Manipuri kings.', x: 55, y: 42 },
-          { name: 'Ima Keithel', type: 'market', label: 'Market', place: 'Imphal · Khwairamband', note: 'The famous all-women market.', x: 62, y: 47 },
-          { name: 'Shirui Peak', type: 'nature', label: 'Nature', place: 'Ukhrul · 83 km from Imphal', note: 'Mountain trails and the seasonal lily.', x: 76, y: 22 },
-          { name: 'Andro Village', type: 'monument', label: 'Monument', place: 'East Imphal · 27 km away', note: 'Heritage lanes, pottery, and local stories.', x: 72, y: 55 }
-        ];
+        var mapData = [];
+
+        function mapType(category) {
+          return category === 'market' ? 'market'
+            : category === 'nature' || category === 'adventure' ? 'nature'
+            : 'monument';
+        }
+
+        XcalateAPI.places({ limit: 50 })
+          .then(function (res) {
+            mapData = (res.results || []).map(function (place, index) {
+              return {
+                slug: place.slug,
+                name: place.name,
+                type: mapType(place.category),
+                label: place.category,
+                place: place.region || 'Manipur',
+                note: place.short_description || 'Explore this place in Manipur.',
+                x: place.longitude ? Math.max(8, Math.min(92, (Number(place.longitude) - 93.65) * 180)) : 18 + (index * 17) % 74,
+                y: place.latitude ? Math.max(12, Math.min(88, 92 - (Number(place.latitude) - 24.4) * 180)) : 20 + (index * 23) % 68
+              };
+            });
+            renderMap(mapSearch.value, selectedMapFilter);
+          })
+          .catch(function (err) { console.error('map:', err); });
 
         function renderMap(query, filter) {
           var needle = (query || '').toLowerCase().trim();
@@ -988,10 +1059,10 @@
             return (filter === 'all' || item.type === filter) && (!needle || (item.name + ' ' + item.place + ' ' + item.label).toLowerCase().indexOf(needle) !== -1);
           });
           mapMarkers.innerHTML = visible.map(function (item) {
-            return '<button class="map-marker marker-' + item.type + '" style="left:' + item.x + '%;top:' + item.y + '%" aria-label="Open ' + item.name + '" data-place="' + item.name + '">' + item.name.charAt(0) + '</button>';
+            return '<button class="map-marker marker-' + item.type + '" style="left:' + item.x + '%;top:' + item.y + '%" aria-label="Open ' + item.name + '" data-place="' + item.name + '" data-slug="' + item.slug + '">' + item.name.charAt(0) + '</button>';
           }).join('');
           mapResults.innerHTML = visible.map(function (item) {
-            return '<button class="map-result" data-place="' + item.name + '"><span class="result-dot dot-' + item.type + '"></span><span><strong>' + item.name + '</strong><small>' + item.place + '</small><em>' + item.note + '</em></span><b>›</b></button>';
+            return '<button class="map-result" data-place="' + item.name + '" data-slug="' + item.slug + '"><span class="result-dot dot-' + item.type + '"></span><span><strong>' + item.name + '</strong><small>' + item.place + '</small><em>' + item.note + '</em></span><b>›</b></button>';
           }).join('') || '<div class="map-empty">No places match that search yet.</div>';
           mapResultCount.textContent = ' · ' + visible.length + ' saved places';
         }
@@ -1194,6 +1265,63 @@
             }, token)
               .then(function () { toast('Booking request sent to ' + b.dataset.name); })
               .catch(function (err) { toast('Booking failed: ' + err.message); });
+          }
+
+          var travelButton = e.target.closest('.travel-card [data-category]');
+          if (travelButton) openCategory(travelButton.dataset.category);
+
+          var reviewButton = e.target.closest('#mtcTop [data-slug]');
+          if (reviewButton) {
+            XcalateAPI.placeDetail(reviewButton.dataset.slug)
+              .then(function (place) {
+                var key = place.category === 'nature' ? 'nature'
+                        : place.category === 'market' ? 'iconic'
+                        : place.category === 'temple' ? 'monuments'
+                        : 'monuments';
+                openCategory(key);
+                categoryTitle.innerHTML = '<span>' + place.name + '</span>';
+                categoryIntro.textContent = place.description || place.short_description || '';
+              })
+              .catch(function (err) {
+                toast('Could not load place details');
+                console.error(err);
+              });
+          }
+
+          var categoryCard = e.target.closest('.category-card[data-slug]');
+          if (categoryCard) {
+            var detailRequest = categoryCard.dataset.detailType === 'homestay'
+              ? XcalateAPI.homestayDetail(categoryCard.dataset.slug)
+              : categoryCard.dataset.detailType === 'listing'
+                ? XcalateAPI.listingDetail(categoryCard.dataset.slug)
+                : XcalateAPI.placeDetail(categoryCard.dataset.slug);
+            detailRequest
+              .then(function (item) {
+                categoryTitle.innerHTML = '<span>' + (item.name || item.title) + '</span>';
+                categoryIntro.textContent = item.description || item.short_description || '';
+              })
+              .catch(function (err) {
+                toast('Could not load item details');
+                console.error(err);
+              });
+          }
+
+          var mapPlace = e.target.closest('.map-marker[data-slug], .map-result[data-slug]');
+          if (mapPlace) {
+            XcalateAPI.placeDetail(mapPlace.dataset.slug)
+              .then(function (place) {
+                var key = place.category === 'nature' || place.category === 'adventure' ? 'nature'
+                        : place.category === 'market' ? 'iconic'
+                        : place.category === 'restaurant' ? 'cuisine'
+                        : 'monuments';
+                openCategory(key);
+                categoryTitle.innerHTML = '<span>' + place.name + '</span>';
+                categoryIntro.textContent = place.description || place.short_description || '';
+              })
+              .catch(function (err) {
+                toast('Could not load map place');
+                console.error(err);
+              });
           }
 
           if (e.target.closest('#practicalGuide')) {
